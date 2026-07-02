@@ -1,0 +1,23 @@
+name: repo-agent-platform
+
+on:
+  pull_request:
+    paths:
+      - "repo_agent_platform/**"
+      - ".github/workflows/repo-agent-platform.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate catalog
+        run: python repo_agent_platform/tools/validate_catalog.py
+      - name: Generate sample agents
+        run: python repo_agent_platform/tools/generate_agents.py --count 100 --output repo_agent_platform/generated/sample_agents.jsonl
+      - name: Validate sample agents
+        run: python repo_agent_platform/tools/validate_agents.py repo_agent_platform/generated/sample_agents.jsonl
