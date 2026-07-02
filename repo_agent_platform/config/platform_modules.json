@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "modules": {
+    "agent_registry": {"enabled": true, "priority": 1},
+    "orchestrator": {"enabled": true, "priority": 2},
+    "memory": {"enabled": true, "priority": 3},
+    "evaluation": {"enabled": true, "priority": 4},
+    "observability": {"enabled": true, "priority": 5},
+    "security": {"enabled": true, "priority": 6},
+    "model_router": {"enabled": true, "priority": 7},
+    "repository_intake": {"enabled": true, "priority": 8},
+    "trading_governance": {"enabled": true, "priority": 9},
+    "social_media_governance": {"enabled": true, "priority": 10}
+  },
+  "defaults": {
+    "dry_run": true,
+    "human_approval_required": true,
+    "audit_log_required": true,
+    "secrets_policy": "environment_or_vault_only"
+  }
+}
