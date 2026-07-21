@@ -7,16 +7,26 @@ on:
       - ".github/workflows/repo-agent-platform.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-agent-platform-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Validate catalog
         run: python repo_agent_platform/tools/validate_catalog.py
+      - name: Run security unit tests
+        run: python -m unittest discover -s repo_agent_platform/tests -p "test_*.py" -v
       - name: Generate sample agents
         run: python repo_agent_platform/tools/generate_agents.py --count 100 --output repo_agent_platform/generated/sample_agents.jsonl
       - name: Validate sample agents
