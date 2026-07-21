@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that external GitHub Actions are pinned to immutable commit SHAs."""
+"""Validate that external GitHub Actions use immutable references."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 FULL_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
+CONTAINER_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
 USES_LINE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^\s#]+)")
 
 
@@ -25,8 +26,8 @@ def validate_uses_reference(reference: str) -> str | None:
         return None
     if reference.startswith("docker://"):
         image = reference.removeprefix("docker://")
-        if "@sha256:" not in image:
-            return "container action must be pinned by sha256 digest"
+        if not CONTAINER_DIGEST.fullmatch(image):
+            return "container action must use a full sha256 digest"
         return None
     if "@" not in reference:
         return "external action is missing an immutable ref"
