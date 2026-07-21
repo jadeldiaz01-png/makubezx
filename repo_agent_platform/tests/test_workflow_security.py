@@ -32,6 +32,9 @@ class WorkflowSecurityTests(unittest.TestCase):
     def test_rejects_unpinned_container(self) -> None:
         self.assertIsNotNone(validate_uses_reference("docker://alpine:3.20"))
 
+    def test_rejects_short_container_digest(self) -> None:
+        self.assertIsNotNone(validate_uses_reference("docker://alpine@sha256:abc123"))
+
     def test_reports_unsafe_workflow_line(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workflow = Path(temp_dir) / "unsafe.yml"
