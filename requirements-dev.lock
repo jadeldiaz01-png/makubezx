@@ -1,0 +1,10 @@
+# Direct-tool lock for the experimental foundation.
+# All declared tools are exact pins. Transitive hash locking is not yet available;
+# see docs/supply-chain.md before promoting beyond EXPERIMENTAL.
+bandit==1.9.4
+mypy==2.3.0
+pip-audit==2.10.1
+pre-commit==4.6.0
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.15.22
