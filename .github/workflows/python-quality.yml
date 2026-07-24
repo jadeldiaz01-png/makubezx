@@ -65,8 +65,18 @@ jobs:
           else
             echo "No Python files changed; type gate is not applicable."
           fi
-      - name: Unit tests and coverage
-        run: python -m pytest
+      - name: Unit tests and conditional coverage
+        shell: bash
+        run: |
+          mapfile -t changed_python < <(
+            git diff --name-only --diff-filter=ACMRT \
+              "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- "*.py"
+          )
+          if ((${#changed_python[@]})); then
+            python -m pytest
+          else
+            python -m pytest -o addopts="-ra --strict-config --strict-markers"
+          fi
       - name: Static security scan
         run: python -m bandit -c pyproject.toml -r repo_agent_platform
       - name: Dependency vulnerability audit
