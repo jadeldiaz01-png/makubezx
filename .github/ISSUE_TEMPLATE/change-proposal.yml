@@ -1,0 +1,66 @@
+name: Change proposal
+description: Proponer un cambio técnico, operativo o de gobernanza con riesgo y evidencia explícitos.
+title: "[CHANGE] "
+labels:
+  - governance
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Explica el problema verificable y por qué requiere cambio.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Nivel de riesgo
+      options:
+        - R0 - documental o sin efecto operativo
+        - R1 - bajo y reversible
+        - R2 - moderado con impacto interno
+        - R3 - alto o con impacto externo
+        - R4 - crítico, financiero, público o irreversible
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Dominio
+      multiple: true
+      options:
+        - platform
+        - agentic
+        - data
+        - security
+        - trading
+        - social
+        - infrastructure
+        - governance
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidencia disponible
+      description: Incluye pruebas, métricas, incidentes, logs o referencias reproducibles.
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Rollback
+      description: Describe cómo volver al estado anterior de forma segura.
+    validations:
+      required: true
+  - type: checkboxes
+    id: invariants
+    attributes:
+      label: Invariantes
+      options:
+        - label: No incluye secretos ni datos personales.
+          required: true
+        - label: No habilita acciones críticas sin aprobación humana.
+          required: true
+        - label: El cambio inicia en modo seguro, experimental o dry-run.
+          required: true
