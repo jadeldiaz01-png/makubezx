@@ -1,0 +1,76 @@
+name: governance-evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/pull_request_template.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - "governance/**"
+      - "evidence/**"
+      - ".github/workflows/governance-evidence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Validate immutable workflow references
+        run: python repo_agent_platform/tools/validate_workflows.py
+      - name: Validate governance artifacts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          required = [
+              Path(".github/pull_request_template.md"),
+              Path(".github/ISSUE_TEMPLATE/change-proposal.yml"),
+              Path("governance/CHANGE_POLICY.md"),
+              Path("governance/RISK_CLASSIFICATION.md"),
+              Path("evidence/ledger.schema.json"),
+          ]
+          missing = [str(path) for path in required if not path.is_file()]
+          if missing:
+              raise SystemExit(f"Missing governance artifacts: {missing}")
+
+          schema = json.loads(Path("evidence/ledger.schema.json").read_text(encoding="utf-8"))
+          required_fields = {
+              "id",
+              "timestamp",
+              "change_ref",
+              "risk_level",
+              "decision",
+              "evidence",
+              "rollback",
+              "approver",
+          }
+          declared = set(schema.get("required", []))
+          if declared != required_fields:
+              raise SystemExit(
+                  f"Evidence Ledger required fields mismatch: {sorted(declared)}"
+              )
+
+          levels = schema["properties"]["risk_level"]["enum"]
+          if levels != ["R0", "R1", "R2", "R3", "R4"]:
+              raise SystemExit("Risk levels are not canonical")
+
+          decisions = schema["properties"]["decision"]["enum"]
+          if decisions != ["GO", "CONDITIONAL_GO", "NO_GO"]:
+              raise SystemExit("Decision values are not canonical")
+
+          print("Governance artifacts and Evidence Ledger schema validated")
+          PY
