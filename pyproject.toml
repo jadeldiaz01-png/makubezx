@@ -1,0 +1,56 @@
+[project]
+name = "makubezx"
+version = "0.1.0"
+description = "Experimental agent-platform foundation"
+requires-python = "==3.12.*"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "bandit==1.9.4",
+  "mypy==2.3.0",
+  "pip-audit==2.10.1",
+  "pre-commit==4.6.0",
+  "pytest==9.1.1",
+  "pytest-cov==7.1.0",
+  "ruff==0.15.22",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["repo_agent_platform/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+exclude = ["repo_agent_platform/generated"]
+
+[tool.pytest.ini_options]
+testpaths = ["repo_agent_platform/tests"]
+addopts = "-ra --strict-config --strict-markers --cov=repo_agent_platform --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+branch = true
+source = ["repo_agent_platform"]
+omit = ["repo_agent_platform/generated/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 80
+
+[tool.bandit]
+exclude_dirs = ["repo_agent_platform/tests", "repo_agent_platform/generated"]
