@@ -34,12 +34,16 @@ The intended `main` ruleset is:
 - dismissal of stale approvals;
 - CODEOWNERS review for sensitive paths;
 - all conversations resolved;
-- required checks: `quality` and `sbom` when applicable;
+- required checks by current job name: `quality`, `sbom`, and `validate` when their path filters apply;
+- governance changes must pass the `governance-evidence` workflow;
+- supply-chain changes must pass the `supply-chain-evidence` workflow;
 - branch must be current before merge;
 - force pushes and deletion prohibited;
 - direct pushes prohibited except documented emergency recovery;
 - signed commits or verified merge provenance preferred;
 - manual merge only; auto-merge disabled.
+
+Workflow and job names are operational identifiers. Any rename must update the repository ruleset in the same approved change or the merge gate is considered unverified.
 
 This document defines the target control. Repository settings must be configured separately through GitHub rulesets or branch protection and verified after activation.
 
