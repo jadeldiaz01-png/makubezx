@@ -1,0 +1,31 @@
+{
+  "target_total_repositories": 300,
+  "integration_default": "reference_then_approve",
+  "categories": [
+    "ai_agents",
+    "mcp",
+    "openai",
+    "claude",
+    "trading",
+    "machine_learning",
+    "mlops",
+    "data",
+    "api",
+    "automation",
+    "meta",
+    "databases",
+    "observability",
+    "devops",
+    "security",
+    "quality",
+    "frontend",
+    "multimodal"
+  ],
+  "rules": {
+    "dry_run_default": true,
+    "require_manual_approval": true,
+    "no_secret_commit": true,
+    "no_mass_clone_without_review": true,
+    "prefer_submodule_or_external_reference": true
+  }
+}

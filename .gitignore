@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Generated agent artifacts
+repo_agent_platform/generated/*.jsonl
+!repo_agent_platform/generated/.gitkeep
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

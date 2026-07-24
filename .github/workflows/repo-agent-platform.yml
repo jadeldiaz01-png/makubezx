@@ -1,0 +1,37 @@
+name: repo-agent-platform
+
+on:
+  pull_request:
+    paths:
+      - "repo_agent_platform/**"
+      - ".github/workflows/repo-agent-platform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-agent-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Validate immutable action references
+        run: python repo_agent_platform/tools/validate_workflows.py
+      - name: Validate catalog
+        run: python repo_agent_platform/tools/validate_catalog.py
+      - name: Run security unit tests
+        run: python -m unittest discover -s repo_agent_platform/tests -p "test_*.py" -v
+      - name: Generate sample agents
+        run: python repo_agent_platform/tools/generate_agents.py --count 100 --output repo_agent_platform/generated/sample_agents.jsonl
+      - name: Validate sample agents
+        run: python repo_agent_platform/tools/validate_agents.py repo_agent_platform/generated/sample_agents.jsonl

@@ -1,0 +1,27 @@
+{
+  "version": "0.3.0",
+  "modules": {
+    "agent_registry": {"status": "EXPERIMENTAL", "priority": 1, "implementation": "jsonl_prototype"},
+    "orchestrator": {"status": "PROPOSED", "priority": 2},
+    "memory": {"status": "PROPOSED", "priority": 3},
+    "evaluation": {"status": "PROPOSED", "priority": 4},
+    "observability": {"status": "PROPOSED", "priority": 5},
+    "security": {"status": "PROPOSED", "priority": 6},
+    "model_router": {"status": "PROPOSED", "priority": 7},
+    "repository_intake": {"status": "PROPOSED", "priority": 8},
+    "trading_governance": {"status": "PROPOSED", "priority": 9, "live": "BLOCKED"},
+    "social_media_governance": {"status": "PROPOSED", "priority": 10, "mode": "READ_ONLY"}
+  },
+  "defaults": {
+    "dry_run": true,
+    "deny_by_default": true,
+    "human_approval_required": true,
+    "auto_merge": false,
+    "production_deployment": false,
+    "live_trading": false,
+    "automatic_social_publishing": false,
+    "privilege_expansion": false,
+    "audit_log_required": true,
+    "secrets_policy": "environment_or_vault_only"
+  }
+}
