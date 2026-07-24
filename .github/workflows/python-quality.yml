@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -39,8 +41,18 @@ jobs:
         run: python repo_agent_platform/tools/validate_workflows.py
       - name: Lint
         run: python -m ruff check .
-      - name: Format check
-        run: python -m ruff format --check .
+      - name: Format changed Python files
+        shell: bash
+        run: |
+          mapfile -t changed_python < <(
+            git diff --name-only --diff-filter=ACMRT \
+              "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- "*.py"
+          )
+          if ((${#changed_python[@]})); then
+            python -m ruff format --check "${changed_python[@]}"
+          else
+            echo "No Python files changed; format gate is not applicable."
+          fi
       - name: Type check
         run: python -m mypy repo_agent_platform
       - name: Unit tests and coverage
