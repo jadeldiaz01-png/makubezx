@@ -1,0 +1,68 @@
+name: supply-chain-evidence
+
+on:
+  pull_request:
+    paths:
+      - "requirements-dev.lock"
+      - "pyproject.toml"
+      - ".github/dependabot.yml"
+      - ".github/CODEOWNERS"
+      - ".github/workflows/**"
+      - "SECURITY.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-evidence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.lock
+      - name: Install pinned audit tooling
+        run: |
+          python -m pip install --upgrade "pip==26.1.1"
+          python -m pip install -r requirements-dev.lock
+      - name: Validate immutable workflow references
+        run: python repo_agent_platform/tools/validate_workflows.py
+      - name: Generate CycloneDX SBOM
+        run: |
+          mkdir -p evidence
+          python -m pip_audit \
+            --requirement requirements-dev.lock \
+            --format cyclonedx-json \
+            --output evidence/python-dev-sbom.cdx.json \
+            --strict
+      - name: Validate SBOM structure
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("evidence/python-dev-sbom.cdx.json")
+          document = json.loads(path.read_text(encoding="utf-8"))
+          if document.get("bomFormat") != "CycloneDX":
+              raise SystemExit("SBOM is not CycloneDX")
+          if not isinstance(document.get("components"), list) or not document["components"]:
+              raise SystemExit("SBOM contains no components")
+          print(f"Validated {len(document['components'])} SBOM components")
+          PY
+      - name: Upload SBOM evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: python-dev-sbom
+          path: evidence/python-dev-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
