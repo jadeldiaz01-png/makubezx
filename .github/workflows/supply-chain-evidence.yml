@@ -7,7 +7,7 @@ on:
       - "pyproject.toml"
       - ".github/dependabot.yml"
       - ".github/CODEOWNERS"
-      - ".github/workflows/supply-chain-evidence.yml"
+      - ".github/workflows/**"
       - "SECURITY.md"
   workflow_dispatch:
 
