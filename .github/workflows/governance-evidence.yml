@@ -30,20 +30,22 @@ jobs:
           python-version: "3.12"
       - name: Validate immutable workflow references
         run: python repo_agent_platform/tools/validate_workflows.py
-      - name: Validate governance artifacts
+      - name: Validate governance artifacts and ledger cases
         run: |
           python - <<'PY'
           import json
+          import re
+          from datetime import datetime
           from pathlib import Path
 
-          required = [
+          required_paths = [
               Path(".github/pull_request_template.md"),
               Path(".github/ISSUE_TEMPLATE/change-proposal.yml"),
               Path("governance/CHANGE_POLICY.md"),
               Path("governance/RISK_CLASSIFICATION.md"),
               Path("evidence/ledger.schema.json"),
           ]
-          missing = [str(path) for path in required if not path.is_file()]
+          missing = [str(path) for path in required_paths if not path.is_file()]
           if missing:
               raise SystemExit(f"Missing governance artifacts: {missing}")
 
@@ -52,14 +54,57 @@ jobs:
               "id", "timestamp", "change_ref", "risk_level",
               "decision", "evidence", "rollback", "approver",
           }
-          declared = set(schema.get("required", []))
-          if declared != required_fields:
-              raise SystemExit(f"Evidence Ledger required fields mismatch: {sorted(declared)}")
-
+          if set(schema.get("required", [])) != required_fields:
+              raise SystemExit("Evidence Ledger required fields mismatch")
           if schema["properties"]["risk_level"]["enum"] != ["R0", "R1", "R2", "R3", "R4"]:
               raise SystemExit("Risk levels are not canonical")
           if schema["properties"]["decision"]["enum"] != ["GO", "CONDITIONAL_GO", "NO_GO"]:
               raise SystemExit("Decision values are not canonical")
 
-          print("Governance artifacts and Evidence Ledger schema validated")
+          def validate_entry(entry: dict) -> None:
+              missing_fields = required_fields - set(entry)
+              if missing_fields:
+                  raise ValueError(f"missing fields: {sorted(missing_fields)}")
+              if not re.fullmatch(r"EV-[0-9]{8}-[A-Z0-9-]+", entry["id"]):
+                  raise ValueError("invalid id")
+              datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
+              if entry["risk_level"] not in {"R0", "R1", "R2", "R3", "R4"}:
+                  raise ValueError("invalid risk")
+              if entry["decision"] not in {"GO", "CONDITIONAL_GO", "NO_GO"}:
+                  raise ValueError("invalid decision")
+              if not entry["evidence"]:
+                  raise ValueError("evidence required")
+              for item in entry["evidence"]:
+                  if set(item) != {"type", "uri", "sha256"}:
+                      raise ValueError("invalid evidence fields")
+                  if not re.fullmatch(r"[0-9a-f]{64}", item["sha256"]):
+                      raise ValueError("invalid evidence hash")
+
+          valid = {
+              "id": "EV-20260724-PR9",
+              "timestamp": "2026-07-24T15:00:00Z",
+              "change_ref": "PR-9",
+              "risk_level": "R1",
+              "decision": "CONDITIONAL_GO",
+              "evidence": [{"type": "ci", "uri": "github://run/1", "sha256": "a" * 64}],
+              "rollback": "Close or revert PR 9",
+              "approver": "human-reviewer",
+          }
+          validate_entry(valid)
+
+          invalid_cases = [
+              {**valid, "risk_level": "R9"},
+              {**valid, "decision": "AUTO_GO"},
+              {**valid, "evidence": []},
+              {**valid, "id": "invalid"},
+              {key: value for key, value in valid.items() if key != "rollback"},
+          ]
+          for case in invalid_cases:
+              try:
+                  validate_entry(case)
+              except (ValueError, TypeError):
+                  continue
+              raise SystemExit(f"Negative ledger case unexpectedly passed: {case}")
+
+          print("Governance artifacts and positive/negative ledger cases validated")
           PY
