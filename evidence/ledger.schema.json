@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/evidence-ledger-entry.schema.json",
+  "title": "Evidence Ledger Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "timestamp",
+    "change_ref",
+    "risk_level",
+    "decision",
+    "evidence",
+    "rollback",
+    "approver"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^EV-[0-9]{8}-[A-Z0-9-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "change_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "risk_level": {
+      "enum": ["R0", "R1", "R2", "R3", "R4"]
+    },
+    "decision": {
+      "enum": ["GO", "CONDITIONAL_GO", "NO_GO"]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "uri", "sha256"],
+        "properties": {
+          "type": {"type": "string", "minLength": 1},
+          "uri": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "rollback": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approver": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
