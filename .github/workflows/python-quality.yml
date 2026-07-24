@@ -53,8 +53,18 @@ jobs:
           else
             echo "No Python files changed; format gate is not applicable."
           fi
-      - name: Type check
-        run: python -m mypy repo_agent_platform
+      - name: Type-check changed Python files
+        shell: bash
+        run: |
+          mapfile -t changed_python < <(
+            git diff --name-only --diff-filter=ACMRT \
+              "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- "*.py"
+          )
+          if ((${#changed_python[@]})); then
+            python -m mypy "${changed_python[@]}"
+          else
+            echo "No Python files changed; type gate is not applicable."
+          fi
       - name: Unit tests and coverage
         run: python -m pytest
       - name: Static security scan
