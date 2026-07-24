@@ -1,6 +1,13 @@
-## Resumen
+## Problema y estado anterior
 
-Describe el cambio y el problema que resuelve.
+Describe el problema verificable y el comportamiento anterior.
+
+## Solución y alcance
+
+- Solución propuesta:
+- Dentro de alcance:
+- Fuera de alcance:
+- Archivos modificados:
 
 ## Clasificación de riesgo
 
@@ -8,29 +15,57 @@ Describe el cambio y el problema que resuelve.
 - Dominio: `platform | agentic | data | security | trading | social | infrastructure | governance`
 - Cambio reversible: `sí | no`
 - Impacto externo: `ninguno | interno | usuario | financiero | público`
+- Madurez: `PROPOSED | ADR_APPROVED | IMPLEMENTING | EXPERIMENTAL | VALIDATED | CERTIFIED | PRODUCTION_READY | SUSPENDED | RETIRED`
 
-## Evidencia
+## Threat model y riesgos
 
-- [ ] CI completo y exitoso.
-- [ ] Pruebas relevantes ejecutadas.
-- [ ] Riesgos residuales documentados.
-- [ ] Plan de rollback probado o verificable.
-- [ ] Evidencia añadida al ledger cuando aplique.
+- Activos protegidos:
+- Amenazas consideradas:
+- Controles:
+- Riesgos residuales:
+- Permission diff:
+- Behavior diff:
 
-## Controles especiales
+## Pruebas y resultados
 
-- [ ] No contiene secretos ni datos personales.
-- [ ] No amplía privilegios sin aprobación explícita.
-- [ ] No habilita trading real, publicación automática ni acciones irreversibles.
-- [ ] Las referencias externas son inmutables.
-- [ ] Dependencias y artefactos tienen procedencia verificable.
+- Pruebas positivas:
+- Pruebas negativas/adversariales:
+- Lint/type checking/cobertura:
+- Seguridad/SCA/SBOM:
+- Resultado CI:
 
-## GO/NO-GO
+## Métricas y observabilidad
 
+- Métricas/baseline:
+- Logs/traces/alertas:
+- SLI/SLO afectados:
+
+## Migración, rollback y operación
+
+- Migración:
+- Rollback probado o verificable:
+- Runbook:
+
+## Coste y ownership
+
+- Owner:
+- Revisor independiente requerido:
+- Coste inicial/operativo:
+- Complejidad y lock-in:
+
+## Evidencia y aprobaciones
+
+- Evidencia ligada al commit/PR:
+- Evidence Ledger:
 - Decisión propuesta: `GO | CONDITIONAL_GO | NO_GO`
 - Aprobador humano:
 - Condiciones pendientes:
 
-## Rollback
+## Invariantes
 
-Indica el commit, comando o procedimiento exacto para revertir el cambio.
+- [ ] No contiene secretos ni datos personales.
+- [ ] No amplía privilegios sin aprobación explícita.
+- [ ] No habilita trading real, publicación automática, despliegue productivo ni acciones irreversibles.
+- [ ] Las referencias externas son inmutables.
+- [ ] Dependencias y artefactos tienen procedencia verificable.
+- [ ] Auto-merge permanece deshabilitado.
