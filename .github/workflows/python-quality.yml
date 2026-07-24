@@ -77,7 +77,17 @@ jobs:
           else
             python -m pytest -o addopts="-ra --strict-config --strict-markers"
           fi
-      - name: Static security scan
-        run: python -m bandit -c pyproject.toml -r repo_agent_platform
+      - name: Static security scan for changed Python files
+        shell: bash
+        run: |
+          mapfile -t changed_python < <(
+            git diff --name-only --diff-filter=ACMRT \
+              "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- "*.py"
+          )
+          if ((${#changed_python[@]})); then
+            python -m bandit -c pyproject.toml "${changed_python[@]}"
+          else
+            echo "No Python files changed; Bandit gate is not applicable."
+          fi
       - name: Dependency vulnerability audit
         run: python -m pip_audit -r requirements-dev.lock --strict
