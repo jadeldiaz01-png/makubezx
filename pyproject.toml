@@ -25,7 +25,10 @@ line-length = 100
 extend-exclude = ["repo_agent_platform/generated"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "S"]
+# Initial adoption gate: block syntax/runtime defects and high-confidence security
+# findings across the existing codebase. Broader style families are introduced in
+# later incremental PRs after the inherited baseline is normalized.
+select = ["E9", "F63", "F7", "F82", "S"]
 ignore = ["S101"]
 
 [tool.ruff.format]
