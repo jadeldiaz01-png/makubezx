@@ -1,0 +1,8 @@
+# Default ownership for all repository changes.
+* @jadeldiaz01-png
+
+# Security-sensitive and automation surfaces.
+/.github/ @jadeldiaz01-png
+/repo_agent_platform/ @jadeldiaz01-png
+/pyproject.toml @jadeldiaz01-png
+/requirements-dev.lock @jadeldiaz01-png
