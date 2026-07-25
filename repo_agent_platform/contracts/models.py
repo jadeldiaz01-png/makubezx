@@ -101,8 +101,7 @@ def _require_scoped(name: str, values: tuple[str, ...]) -> None:
     for value in values:
         lowered = value.lower()
         forbidden_fragment = any(
-            token in lowered
-            for token in ("unrestricted", "global.*", "shell.*", "filesystem.*")
+            token in lowered for token in ("unrestricted", "global.*", "shell.*", "filesystem.*")
         )
         if lowered in _FORBIDDEN_GLOBAL_TOKENS or forbidden_fragment:
             raise ContractError(f"{name} contains a global or unrestricted grant: {value}")
@@ -254,8 +253,7 @@ class PolicyManifest(ContractMixin):
 
     def permits(self, capability: str) -> bool:
         return (
-            capability in self.allowed_capabilities
-            and capability not in self.denied_capabilities
+            capability in self.allowed_capabilities and capability not in self.denied_capabilities
         )
 
 
