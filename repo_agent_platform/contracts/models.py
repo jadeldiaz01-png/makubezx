@@ -10,6 +10,7 @@ from typing import Self
 
 _ID_PATTERN = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+_GIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 _SEMVER_PATTERN = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 _FORBIDDEN_GLOBAL_TOKENS = {"*", "all", "global", "unrestricted"}
 
@@ -99,9 +100,11 @@ def _require_nonempty(name: str, values: tuple[str, ...]) -> None:
 def _require_scoped(name: str, values: tuple[str, ...]) -> None:
     for value in values:
         lowered = value.lower()
-        if lowered in _FORBIDDEN_GLOBAL_TOKENS or any(
-            token in lowered for token in ("unrestricted", "global.*", "shell.*", "filesystem.*")
-        ):
+        forbidden_fragment = any(
+            token in lowered
+            for token in ("unrestricted", "global.*", "shell.*", "filesystem.*")
+        )
+        if lowered in _FORBIDDEN_GLOBAL_TOKENS or forbidden_fragment:
             raise ContractError(f"{name} contains a global or unrestricted grant: {value}")
 
 
@@ -167,7 +170,11 @@ class ToolManifest(ContractMixin):
     schema_version: str = "1.0.0"
 
     def __post_init__(self) -> None:
-        for name, value in (("tool_id", self.tool_id), ("tenant", self.tenant), ("owner", self.owner)):
+        for name, value in (
+            ("tool_id", self.tool_id),
+            ("tenant", self.tenant),
+            ("owner", self.owner),
+        ):
             _require_identifier(name, value)
         _require_semver(self.version)
         _require_nonempty("capabilities", self.capabilities)
@@ -196,7 +203,11 @@ class ModelManifest(ContractMixin):
     schema_version: str = "1.0.0"
 
     def __post_init__(self) -> None:
-        for name, value in (("model_id", self.model_id), ("provider", self.provider), ("owner", self.owner)):
+        for name, value in (
+            ("model_id", self.model_id),
+            ("provider", self.provider),
+            ("owner", self.owner),
+        ):
             _require_identifier(name, value)
         _require_semver(self.version)
         _require_nonempty("allowed_purposes", self.allowed_purposes)
@@ -223,18 +234,23 @@ class PolicyManifest(ContractMixin):
     schema_version: str = "1.0.0"
 
     def __post_init__(self) -> None:
-        for name, value in (("policy_id", self.policy_id), ("tenant", self.tenant), ("owner", self.owner)):
+        for name, value in (
+            ("policy_id", self.policy_id),
+            ("tenant", self.tenant),
+            ("owner", self.owner),
+        ):
             _require_identifier(name, value)
         _require_semver(self.version)
         _require_nonempty("denied_capabilities", self.denied_capabilities)
         _require_scoped("allowed_capabilities", self.allowed_capabilities)
-        _require_scoped("denied_capabilities", self.denied_capabilities)
         _require_scoped("human_approval_capabilities", self.human_approval_capabilities)
         if not self.deny_by_default:
             raise ContractError("deny_by_default cannot be disabled")
         overlap = set(self.allowed_capabilities) & set(self.denied_capabilities)
         if overlap:
-            raise ContractError(f"capabilities cannot be both allowed and denied: {sorted(overlap)}")
+            raise ContractError(
+                f"capabilities cannot be both allowed and denied: {sorted(overlap)}"
+            )
 
     def permits(self, capability: str) -> bool:
         return capability in self.allowed_capabilities and capability not in self.denied_capabilities
@@ -279,14 +295,16 @@ class AgentManifest(ContractMixin):
         _require_scoped("capabilities", self.capabilities)
         _require_scoped("allowed_tool_ids", self.allowed_tool_ids)
         _require_nonempty("forbidden_tool_ids", self.forbidden_tool_ids)
-        _require_scoped("forbidden_tool_ids", self.forbidden_tool_ids)
         _require_nonempty("model_ids", self.model_ids)
         _require_nonempty("data_classifications", self.data_classifications)
         _require_utc("expires_at", self.expires_at)
         overlap = set(self.allowed_tool_ids) & set(self.forbidden_tool_ids)
         if overlap:
             raise ContractError(f"tools cannot be both allowed and forbidden: {sorted(overlap)}")
-        if self.enabled and self.maturity not in {Maturity.CERTIFIED, Maturity.PRODUCTION_READY}:
+        if self.enabled and self.maturity not in {
+            Maturity.CERTIFIED,
+            Maturity.PRODUCTION_READY,
+        }:
             raise ContractError("only certified manifests can be enabled")
 
 
@@ -305,7 +323,11 @@ class MCPServerManifest(ContractMixin):
     schema_version: str = "1.0.0"
 
     def __post_init__(self) -> None:
-        for name, value in (("server_id", self.server_id), ("tenant", self.tenant), ("owner", self.owner)):
+        for name, value in (
+            ("server_id", self.server_id),
+            ("tenant", self.tenant),
+            ("owner", self.owner),
+        ):
             _require_identifier(name, value)
         _require_semver(self.version)
         _require_nonempty("tool_ids", self.tool_ids)
@@ -347,9 +369,13 @@ class EvidenceBundle(ContractMixin):
     schema_version: str = "1.0.0"
 
     def __post_init__(self) -> None:
-        for name, value in (("bundle_id", self.bundle_id), ("tenant", self.tenant), ("owner", self.owner)):
+        for name, value in (
+            ("bundle_id", self.bundle_id),
+            ("tenant", self.tenant),
+            ("owner", self.owner),
+        ):
             _require_identifier(name, value)
-        if not re.fullmatch(r"^[0-9a-f]{40}$", self.commit_sha):
+        if not _GIT_SHA_PATTERN.fullmatch(self.commit_sha):
             raise ContractError("commit_sha must be an immutable 40-character SHA")
         _require_utc("created_at", self.created_at)
         if not self.items:
