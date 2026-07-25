@@ -253,7 +253,10 @@ class PolicyManifest(ContractMixin):
             )
 
     def permits(self, capability: str) -> bool:
-        return capability in self.allowed_capabilities and capability not in self.denied_capabilities
+        return (
+            capability in self.allowed_capabilities
+            and capability not in self.denied_capabilities
+        )
 
 
 @dataclass(frozen=True, slots=True)
