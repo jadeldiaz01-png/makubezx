@@ -8,6 +8,7 @@
     "id",
     "timestamp",
     "change_ref",
+    "commit_sha",
     "risk_level",
     "decision",
     "evidence",
