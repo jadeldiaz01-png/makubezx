@@ -28,15 +28,19 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.12"
+      - name: Install pinned schema validator
+        run: python -m pip install "jsonschema[format-nongpl]==4.26.0"
       - name: Validate immutable workflow references
         run: python repo_agent_platform/tools/validate_workflows.py
       - name: Validate governance artifacts and ledger cases
         run: |
           python - <<'PY'
+          import copy
           import json
-          import re
-          from datetime import datetime
           from pathlib import Path
+
+          from jsonschema import Draft202012Validator, FormatChecker
+          from jsonschema.exceptions import ValidationError
 
           required_paths = [
               Path(".github/pull_request_template.md"),
@@ -50,8 +54,11 @@ jobs:
               raise SystemExit(f"Missing governance artifacts: {missing}")
 
           schema = json.loads(Path("evidence/ledger.schema.json").read_text(encoding="utf-8"))
+          Draft202012Validator.check_schema(schema)
+          validator = Draft202012Validator(schema, format_checker=FormatChecker())
+
           required_fields = {
-              "id", "timestamp", "change_ref", "risk_level",
+              "id", "timestamp", "change_ref", "commit_sha", "risk_level",
               "decision", "evidence", "rollback", "approver",
           }
           if set(schema.get("required", [])) != required_fields:
@@ -61,50 +68,54 @@ jobs:
           if schema["properties"]["decision"]["enum"] != ["GO", "CONDITIONAL_GO", "NO_GO"]:
               raise SystemExit("Decision values are not canonical")
 
-          def validate_entry(entry: dict) -> None:
-              missing_fields = required_fields - set(entry)
-              if missing_fields:
-                  raise ValueError(f"missing fields: {sorted(missing_fields)}")
-              if not re.fullmatch(r"EV-[0-9]{8}-[A-Z0-9-]+", entry["id"]):
-                  raise ValueError("invalid id")
-              datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
-              if entry["risk_level"] not in {"R0", "R1", "R2", "R3", "R4"}:
-                  raise ValueError("invalid risk")
-              if entry["decision"] not in {"GO", "CONDITIONAL_GO", "NO_GO"}:
-                  raise ValueError("invalid decision")
-              if not entry["evidence"]:
-                  raise ValueError("evidence required")
-              for item in entry["evidence"]:
-                  if set(item) != {"type", "uri", "sha256"}:
-                      raise ValueError("invalid evidence fields")
-                  if not re.fullmatch(r"[0-9a-f]{64}", item["sha256"]):
-                      raise ValueError("invalid evidence hash")
-
           valid = {
-              "id": "EV-20260724-PR9",
-              "timestamp": "2026-07-24T15:00:00Z",
+              "id": "EV-20260725-PR9",
+              "timestamp": "2026-07-25T12:00:00Z",
               "change_ref": "PR-9",
+              "commit_sha": "e" * 40,
               "risk_level": "R1",
               "decision": "CONDITIONAL_GO",
               "evidence": [{"type": "ci", "uri": "github://run/1", "sha256": "a" * 64}],
               "rollback": "Close or revert PR 9",
               "approver": "human-reviewer",
           }
-          validate_entry(valid)
+          validator.validate(valid)
 
-          invalid_cases = [
-              {**valid, "risk_level": "R9"},
-              {**valid, "decision": "AUTO_GO"},
-              {**valid, "evidence": []},
-              {**valid, "id": "invalid"},
-              {key: value for key, value in valid.items() if key != "rollback"},
-          ]
-          for case in invalid_cases:
+          invalid_cases = []
+          for field in sorted(required_fields):
+              case = copy.deepcopy(valid)
+              del case[field]
+              invalid_cases.append((f"missing-{field}", case))
+
+          invalid_cases.extend([
+              ("invalid-risk", {**valid, "risk_level": "R9"}),
+              ("invalid-decision", {**valid, "decision": "AUTO_GO"}),
+              ("empty-evidence", {**valid, "evidence": []}),
+              ("invalid-id", {**valid, "id": "invalid"}),
+              ("invalid-timestamp", {**valid, "timestamp": "not-a-date"}),
+              ("invalid-commit", {**valid, "commit_sha": "deadbeef"}),
+              ("extra-property", {**valid, "unapproved": True}),
+              ("invalid-evidence-hash", {
+                  **valid,
+                  "evidence": [{"type": "ci", "uri": "github://run/1", "sha256": "bad"}],
+              }),
+              ("extra-evidence-property", {
+                  **valid,
+                  "evidence": [{
+                      "type": "ci",
+                      "uri": "github://run/1",
+                      "sha256": "a" * 64,
+                      "secret": "must-not-pass",
+                  }],
+              }),
+          ])
+
+          for name, case in invalid_cases:
               try:
-                  validate_entry(case)
-              except (ValueError, TypeError):
+                  validator.validate(case)
+              except ValidationError:
                   continue
-              raise SystemExit(f"Negative ledger case unexpectedly passed: {case}")
+              raise SystemExit(f"Negative ledger case unexpectedly passed: {name}")
 
-          print("Governance artifacts and positive/negative ledger cases validated")
+          print("Draft 2020-12 schema and positive/negative ledger cases validated")
           PY
