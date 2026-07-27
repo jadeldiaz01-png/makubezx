@@ -39,7 +39,18 @@ indent-style = "space"
 python_version = "3.12"
 strict = true
 warn_unused_configs = true
+warn_unused_ignores = true
 exclude = ["repo_agent_platform/generated"]
+
+[[tool.mypy.overrides]]
+module = "repo_agent_platform.contracts.models"
+# mypy 2.3 does not infer that every runtime subclass of ContractMixin is a dataclass.
+disable_error_code = ["call-overload"]
+
+[[tool.mypy.overrides]]
+module = "repo_agent_platform.tests.test_enterprise_contracts"
+# Two negative tests intentionally construct heterogeneous keyword dictionaries.
+disable_error_code = ["arg-type"]
 
 [tool.pytest.ini_options]
 testpaths = ["repo_agent_platform/tests"]
