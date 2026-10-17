@@ -36,33 +36,83 @@ class MemoryAuditSink:
         self.events.append(event)
 
 
-def fixtures() -> tuple[AgentManifest, ToolManifest, PolicyManifest, EvidenceBundle, CertificationRecord, RuntimeLease]:
+def fixtures() -> tuple[
+    AgentManifest, ToolManifest, PolicyManifest, EvidenceBundle, CertificationRecord, RuntimeLease
+]:
     budget = ExecutionBudget(1000, 60, 10, 1, 10000)
     agent = AgentManifest(
-        "agent.research", "tenant.one", "team.owner", "research", "1.0.0",
-        ("public.web.read",), ("web.read",), ("shell.exec",), ("model.local",),
-        "policy.research", "quality.research", RiskLevel.R1, budget, "sandbox.readonly",
-        ("public",), EXPIRY, Maturity.CERTIFIED, True,
+        "agent.research",
+        "tenant.one",
+        "team.owner",
+        "research",
+        "1.0.0",
+        ("public.web.read",),
+        ("web.read",),
+        ("shell.exec",),
+        ("model.local",),
+        "policy.research",
+        "quality.research",
+        RiskLevel.R1,
+        budget,
+        "sandbox.readonly",
+        ("public",),
+        EXPIRY,
+        Maturity.CERTIFIED,
+        True,
     )
     tool = ToolManifest(
-        "web.read", "tenant.one", "team.tools", "1.0.0", ToolEffect.READ_ONLY,
-        ("public.web.read",), HASH, HASH, 10, enabled=True,
+        "web.read",
+        "tenant.one",
+        "team.tools",
+        "1.0.0",
+        ToolEffect.READ_ONLY,
+        ("public.web.read",),
+        HASH,
+        HASH,
+        10,
+        enabled=True,
     )
     policy = PolicyManifest(
-        "policy.research", "tenant.one", "team.security", "1.0.0",
-        ("public.web.read",), ("shell.exec",), (),
+        "policy.research",
+        "tenant.one",
+        "team.security",
+        "1.0.0",
+        ("public.web.read",),
+        ("shell.exec",),
+        (),
     )
     evidence = EvidenceBundle(
-        "bundle.research", "tenant.one", "team.owner", COMMIT, NOW,
-        (EvidenceItem("ci", "https://example.invalid/run/1", HASH),), (), (), (),
+        "bundle.research",
+        "tenant.one",
+        "team.owner",
+        COMMIT,
+        NOW,
+        (EvidenceItem("ci", "https://example.invalid/run/1", HASH),),
+        (),
+        (),
+        (),
     )
     certification = CertificationRecord(
-        "cert.research", "agent.research", "tenant.one", "reviewer.one",
-        evidence.content_hash(), NOW - timedelta(minutes=1), EXPIRY, Decision.GO,
+        "cert.research",
+        "agent.research",
+        "tenant.one",
+        "reviewer.one",
+        evidence.content_hash(),
+        NOW - timedelta(minutes=1),
+        EXPIRY,
+        Decision.GO,
     )
     lease = RuntimeLease(
-        "lease.research", "tenant.one", "agent.research", "policy.research", "cert.research",
-        ("public.web.read",), budget, NOW - timedelta(minutes=1), EXPIRY, HASH,
+        "lease.research",
+        "tenant.one",
+        "agent.research",
+        "policy.research",
+        "cert.research",
+        ("public.web.read",),
+        budget,
+        NOW - timedelta(minutes=1),
+        EXPIRY,
+        HASH,
     )
     return agent, tool, policy, evidence, certification, lease
 
@@ -127,8 +177,15 @@ class RuntimeAdmissionTests(unittest.TestCase):
 
     def test_write_tool_remains_denied_even_with_matching_approval(self) -> None:
         write_tool = ToolManifest(
-            "web.write", "tenant.one", "team.tools", "1.0.0", ToolEffect.WRITE_SCOPED,
-            ("public.web.write",), HASH, HASH, 10,
+            "web.write",
+            "tenant.one",
+            "team.tools",
+            "1.0.0",
+            ToolEffect.WRITE_SCOPED,
+            ("public.web.write",),
+            HASH,
+            HASH,
+            10,
         )
         policy = replace(
             self.policy,
@@ -145,9 +202,17 @@ class RuntimeAdmissionTests(unittest.TestCase):
         denied = self.admit(policy=policy)
         self.assertIn("human_approval_required", denied.reason_codes)
         approval = ApprovalRequest(
-            "approval.research", "tenant.one", "team.owner", "reviewer.one", capability,
-            "agent.research", self.evidence.content_hash(), NOW - timedelta(minutes=1), EXPIRY,
-            Decision.GO, NOW,
+            "approval.research",
+            "tenant.one",
+            "team.owner",
+            "reviewer.one",
+            capability,
+            "agent.research",
+            self.evidence.content_hash(),
+            NOW - timedelta(minutes=1),
+            EXPIRY,
+            Decision.GO,
+            NOW,
         )
         self.assertTrue(self.admit(policy=policy, approval=approval).allowed)
         wrong_subject = replace(approval, subject_id="agent.other")
