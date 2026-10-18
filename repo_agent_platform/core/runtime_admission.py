@@ -145,16 +145,16 @@ def admit_tool(
         reasons.add("evidence_sha_mismatch")
     if certification.evidence_bundle_hash != evidence.content_hash():
         reasons.add("certification_evidence_mismatch")
-    bound_manifests = {
-        item.evidence_type: item.sha256
-        for item in evidence.items
-        if item.evidence_type in {"agent_manifest", "policy_manifest", "tool_manifest"}
+    manifest_bindings: dict[str, list[str]] = {}
+    for item in evidence.items:
+        if item.evidence_type in {"agent_manifest", "policy_manifest", "tool_manifest"}:
+            manifest_bindings.setdefault(item.evidence_type, []).append(item.sha256)
+    expected_manifests = {
+        "agent_manifest": agent.content_hash(),
+        "policy_manifest": policy.content_hash(),
+        "tool_manifest": tool.content_hash(),
     }
-    if (
-        bound_manifests.get("agent_manifest") != agent.content_hash()
-        or bound_manifests.get("policy_manifest") != policy.content_hash()
-        or bound_manifests.get("tool_manifest") != tool.content_hash()
-    ):
+    if any(manifest_bindings.get(kind) != [digest] for kind, digest in expected_manifests.items()):
         reasons.add("manifest_evidence_mismatch")
     if evidence.created_at > now or certification.issued_at > now:
         reasons.add("evidence_not_yet_valid")
