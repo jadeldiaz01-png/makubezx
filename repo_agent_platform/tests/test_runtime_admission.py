@@ -93,7 +93,12 @@ def fixtures() -> tuple[
         "team.owner",
         COMMIT,
         NOW,
-        (EvidenceItem("ci", "https://example.invalid/run/1", HASH),),
+        (
+            EvidenceItem("ci", "https://example.invalid/run/1", HASH),
+            EvidenceItem("agent_manifest", "urn:manifest:agent.research", agent.content_hash()),
+            EvidenceItem("policy_manifest", "urn:manifest:policy.research", policy.content_hash()),
+            EvidenceItem("tool_manifest", "urn:manifest:web.read", tool.content_hash()),
+        ),
         (),
         (),
         (),
@@ -181,6 +186,28 @@ class RuntimeAdmissionTests(unittest.TestCase):
         self.assertFalse(decision.allowed)
         self.assertIn("evidence_sha_mismatch", decision.reason_codes)
 
+    def test_changed_manifest_is_not_admitted_under_stale_certification(self) -> None:
+        expanded_agent = replace(
+            self.agent,
+            capabilities=("public.web.read", "public.web.admin"),
+        )
+        expanded_policy = replace(
+            self.policy,
+            allowed_capabilities=("public.web.read", "public.web.admin"),
+        )
+        expanded_lease = replace(
+            self.lease,
+            granted_capabilities=("public.web.read", "public.web.admin"),
+        )
+        result = self.admit(
+            agent=expanded_agent,
+            policy=expanded_policy,
+            lease=expanded_lease,
+            capability="public.web.admin",
+        )
+        self.assertFalse(result.allowed)
+        self.assertIn("manifest_evidence_mismatch", result.reason_codes)
+
     def test_expired_or_revoked_certification_is_denied(self) -> None:
         decision = self.admit(certification=replace(self.cert, revoked_at=NOW))
         self.assertFalse(decision.allowed)
@@ -235,7 +262,19 @@ class RuntimeAdmissionTests(unittest.TestCase):
     def test_sensitive_capability_requires_exact_current_approval(self) -> None:
         capability = "public.web.read"
         policy = replace(self.policy, human_approval_capabilities=(capability,))
-        denied = self.admit(policy=policy)
+        evidence = replace(
+            self.evidence,
+            items=(
+                self.evidence.items[0],
+                self.evidence.items[1],
+                EvidenceItem(
+                    "policy_manifest", "urn:manifest:policy.research", policy.content_hash()
+                ),
+                self.evidence.items[3],
+            ),
+        )
+        certification = replace(self.cert, evidence_bundle_hash=evidence.content_hash())
+        denied = self.admit(policy=policy, evidence=evidence, certification=certification)
         self.assertIn("human_approval_required", denied.reason_codes)
         approval = ApprovalRequest(
             "approval.research",
@@ -244,19 +283,26 @@ class RuntimeAdmissionTests(unittest.TestCase):
             "reviewer.one",
             capability,
             "agent.research",
-            self.evidence.content_hash(),
+            evidence.content_hash(),
             NOW - timedelta(minutes=1),
             EXPIRY,
             Decision.GO,
             NOW,
         )
-        approved = self.admit(policy=policy, approval=approval)
+        approved = self.admit(
+            policy=policy, evidence=evidence, certification=certification, approval=approval
+        )
         self.assertTrue(approved.allowed)
         self.assertEqual(approved.audit_event.approval_request_id, approval.request_id)
         wrong_subject = replace(approval, subject_id="agent.other")
         self.assertIn(
             "human_approval_invalid",
-            self.admit(policy=policy, approval=wrong_subject).reason_codes,
+            self.admit(
+                policy=policy,
+                evidence=evidence,
+                certification=certification,
+                approval=wrong_subject,
+            ).reason_codes,
         )
 
     def test_audit_failure_prevents_admission(self) -> None:
@@ -287,3 +333,4 @@ class RuntimeAdmissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
