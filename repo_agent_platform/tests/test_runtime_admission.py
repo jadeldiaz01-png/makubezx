@@ -208,6 +208,20 @@ class RuntimeAdmissionTests(unittest.TestCase):
         self.assertFalse(result.allowed)
         self.assertIn("manifest_evidence_mismatch", result.reason_codes)
 
+    def test_duplicate_manifest_evidence_is_rejected(self) -> None:
+        evidence = replace(
+            self.evidence,
+            items=self.evidence.items
+            + (
+                EvidenceItem("agent_manifest", "urn:manifest:duplicate", HASH),
+                self.evidence.items[1],
+            ),
+        )
+        certification = replace(self.cert, evidence_bundle_hash=evidence.content_hash())
+        result = self.admit(evidence=evidence, certification=certification)
+        self.assertFalse(result.allowed)
+        self.assertIn("manifest_evidence_mismatch", result.reason_codes)
+
     def test_expired_or_revoked_certification_is_denied(self) -> None:
         decision = self.admit(certification=replace(self.cert, revoked_at=NOW))
         self.assertFalse(decision.allowed)
