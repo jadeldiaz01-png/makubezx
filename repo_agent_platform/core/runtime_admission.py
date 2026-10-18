@@ -145,6 +145,17 @@ def admit_tool(
         reasons.add("evidence_sha_mismatch")
     if certification.evidence_bundle_hash != evidence.content_hash():
         reasons.add("certification_evidence_mismatch")
+    bound_manifests = {
+        item.evidence_type: item.sha256
+        for item in evidence.items
+        if item.evidence_type in {"agent_manifest", "policy_manifest", "tool_manifest"}
+    }
+    if (
+        bound_manifests.get("agent_manifest") != agent.content_hash()
+        or bound_manifests.get("policy_manifest") != policy.content_hash()
+        or bound_manifests.get("tool_manifest") != tool.content_hash()
+    ):
+        reasons.add("manifest_evidence_mismatch")
     if evidence.created_at > now or certification.issued_at > now:
         reasons.add("evidence_not_yet_valid")
     if not agent.enabled or agent.maturity not in {Maturity.CERTIFIED, Maturity.PRODUCTION_READY}:
@@ -253,3 +264,4 @@ def admit_tool(
         )
         return AdmissionDecision(False, failure_reasons, failure_event, False)
     return AdmissionDecision(allowed, ordered_reasons, event, True)
+
