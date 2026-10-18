@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import unittest
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-import hashlib
 
 from repo_agent_platform.contracts import (
     AgentManifest,
@@ -20,7 +20,12 @@ from repo_agent_platform.contracts import (
     ToolEffect,
     ToolManifest,
 )
-from repo_agent_platform.core.runtime_admission import AuditEvent, admit_tool
+from repo_agent_platform.core.runtime_admission import (
+    AdmissionDecision,
+    AuditEvent,
+    AuditSink,
+    admit_tool,
+)
 
 NOW = datetime(2026, 10, 17, 12, 0, tzinfo=UTC)
 EXPIRY = NOW + timedelta(hours=1)
@@ -122,21 +127,34 @@ class RuntimeAdmissionTests(unittest.TestCase):
         self.agent, self.tool, self.policy, self.evidence, self.cert, self.lease = fixtures()
         self.audit = MemoryAuditSink()
 
-    def admit(self, **overrides: object):
-        values = {
-            "agent": self.agent,
-            "tool": self.tool,
-            "policy": self.policy,
-            "evidence": self.evidence,
-            "certification": self.cert,
-            "lease": self.lease,
-            "capability": "public.web.read",
-            "expected_commit_sha": COMMIT,
-            "now": NOW,
-            "audit_sink": self.audit,
-        }
-        values.update(overrides)
-        return admit_tool(**values)
+    def admit(
+        self,
+        *,
+        agent: AgentManifest | None = None,
+        tool: ToolManifest | None = None,
+        policy: PolicyManifest | None = None,
+        evidence: EvidenceBundle | None = None,
+        certification: CertificationRecord | None = None,
+        lease: RuntimeLease | None = None,
+        capability: str = "public.web.read",
+        expected_commit_sha: str = COMMIT,
+        now: datetime = NOW,
+        audit_sink: AuditSink | None = None,
+        approval: ApprovalRequest | None = None,
+    ) -> AdmissionDecision:
+        return admit_tool(
+            agent=self.agent if agent is None else agent,
+            tool=self.tool if tool is None else tool,
+            policy=self.policy if policy is None else policy,
+            evidence=self.evidence if evidence is None else evidence,
+            certification=self.cert if certification is None else certification,
+            lease=self.lease if lease is None else lease,
+            capability=capability,
+            expected_commit_sha=expected_commit_sha,
+            now=now,
+            audit_sink=self.audit if audit_sink is None else audit_sink,
+            approval=approval,
+        )
 
     def test_exact_sha_and_active_read_only_scope_is_admitted_and_audited(self) -> None:
         decision = self.admit()
@@ -223,7 +241,7 @@ class RuntimeAdmissionTests(unittest.TestCase):
 
     def test_audit_failure_prevents_admission(self) -> None:
         class FailingSink:
-            def append(self, event: object) -> None:
+            def append(self, event: AuditEvent) -> None:
                 raise OSError("audit unavailable")
 
         result = self.admit(audit_sink=FailingSink())
