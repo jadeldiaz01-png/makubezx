@@ -13,9 +13,9 @@ ADR-0002 defines immutable policy, agent, tool, evidence, certification, lease, 
 
 Add `repo_agent_platform.core.runtime_admission.admit_tool` as a deterministic, no-side-effect evaluator. It admits one capability on one tool only when the agent is enabled at certified maturity; agent, tool, policy, evidence, certification, lease, tenant, and capability scopes match exactly; evidence and certification bind to the expected immutable commit; the certification and lease are active; and any policy-required approval is current, exact, and independently decided.
 
-Lease limits cannot exceed the agent's execution budget. In this increment, only enabled `READ_ONLY` tools can be admitted. `WRITE_SCOPED` and `DESTRUCTIVE` remain unavailable under the current tool contract even when an approval exists.
+Lease limits cannot exceed the agent's execution budget, and every granted lease capability must be within both the agent scope and policy allowlist. In this increment, only enabled `READ_ONLY` tools can be admitted. `WRITE_SCOPED` and `DESTRUCTIVE` remain unavailable under the current tool contract even when an approval exists.
 
-Every outcome produces a redacted canonical decision event containing identifiers, capability, commit SHA, stable reason codes, timestamp, and a SHA-256 content hash. The caller must supply an audit sink. The evaluator returns an allow only after the sink's `append` returns successfully; sink failure returns denial.
+Every outcome produces a redacted canonical decision event containing identifiers, capability, commit SHA, accepted approval reference when applicable, stable reason codes, timestamp, and a SHA-256 content hash. The caller supplies a canonical UUIDv4 invocation ID, making repeated evaluation of the same invocation reproducible. The caller must supply an audit sink with idempotent append semantics; reusing an event ID with different content must fail. The evaluator returns an allow only after the sink's `append` returns successfully; sink failure returns denial.
 
 ## Consequences
 

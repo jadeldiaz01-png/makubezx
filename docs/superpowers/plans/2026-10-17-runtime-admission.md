@@ -23,7 +23,10 @@
 - Wrong commit, certification hash, or tenant must deny admission.
 - Expired, revoked, or not-yet-valid evidence must deny admission.
 - Lease scopes or budgets wider than the agent must deny admission.
+- A lease containing any capability outside the agent or policy scope must deny the whole lease.
 - Write and destructive tools must remain denied despite approval.
+- Repeated evaluation with the same UUIDv4 invocation ID must emit identical audit data.
+- An admitted approval-gated decision must retain its exact approval request ID.
 - Audit sink failure must never return an allow decision.
 
 ---
@@ -45,6 +48,9 @@
 - [x] Implement exact-match cross-contract validation and stable denial codes.
 - [x] Create redacted canonical audit events with SHA-256 content hashes.
 - [x] Require an audit sink before returning allow; fail closed when appending raises.
+- [x] Deny the entire lease if any granted capability exceeds agent or policy authority.
+- [x] Use a caller-supplied UUIDv4 invocation ID for repeatable audit event identity.
+- [x] Record the accepted approval request ID in the audit event.
 - [x] Keep write/destructive tools unavailable under the existing manifest contract.
 - [x] Run all package tests, workflow/catalog validators, sample generation/validation, Ruff, compileall, and mypy.
 

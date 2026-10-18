@@ -139,6 +139,7 @@ class RuntimeAdmissionTests(unittest.TestCase):
         capability: str = "public.web.read",
         expected_commit_sha: str = COMMIT,
         now: datetime = NOW,
+        invocation_id: str = "11111111-1111-4111-8111-111111111111",
         audit_sink: AuditSink | None = None,
         approval: ApprovalRequest | None = None,
     ) -> AdmissionDecision:
@@ -152,6 +153,7 @@ class RuntimeAdmissionTests(unittest.TestCase):
             capability=capability,
             expected_commit_sha=expected_commit_sha,
             now=now,
+            invocation_id=invocation_id,
             audit_sink=self.audit if audit_sink is None else audit_sink,
             approval=approval,
         )
@@ -166,6 +168,12 @@ class RuntimeAdmissionTests(unittest.TestCase):
             hashlib.sha256(decision.audit_event.canonical_json().encode("utf-8")).hexdigest(),
             decision.audit_event.event_hash,
         )
+        repeated = self.admit()
+        self.assertEqual(decision.audit_event, repeated.audit_event)
+
+    def test_invocation_id_must_be_canonical_uuid_v4(self) -> None:
+        with self.assertRaisesRegex(ValueError, "canonical UUIDv4"):
+            self.admit(invocation_id="not-a-uuid")
 
     def test_wrong_commit_sha_is_denied(self) -> None:
         decision = self.admit(expected_commit_sha="c" * 40)
@@ -192,6 +200,15 @@ class RuntimeAdmissionTests(unittest.TestCase):
         decision = self.admit(lease=lease)
         self.assertFalse(decision.allowed)
         self.assertIn("lease_budget_exceeds_agent", decision.reason_codes)
+
+    def test_lease_cannot_include_capabilities_outside_agent_or_policy(self) -> None:
+        lease = replace(
+            self.lease,
+            granted_capabilities=("public.web.read", "public.web.admin"),
+        )
+        decision = self.admit(lease=lease)
+        self.assertFalse(decision.allowed)
+        self.assertIn("lease_scope_exceeds_authority", decision.reason_codes)
 
     def test_write_tool_remains_denied_even_with_matching_approval(self) -> None:
         write_tool = ToolManifest(
@@ -232,7 +249,9 @@ class RuntimeAdmissionTests(unittest.TestCase):
             Decision.GO,
             NOW,
         )
-        self.assertTrue(self.admit(policy=policy, approval=approval).allowed)
+        approved = self.admit(policy=policy, approval=approval)
+        self.assertTrue(approved.allowed)
+        self.assertEqual(approved.audit_event.approval_request_id, approval.request_id)
         wrong_subject = replace(approval, subject_id="agent.other")
         self.assertIn(
             "human_approval_invalid",

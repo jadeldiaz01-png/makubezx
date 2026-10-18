@@ -25,7 +25,7 @@ _SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 class AuditSink(Protocol):
-    """A sink must durably append before returning; production adapters own that guarantee."""
+    """Durably append idempotently; reject reuse of an event ID with different content."""
 
     def append(self, event: AuditEvent) -> None: ...
 
@@ -39,6 +39,7 @@ class AuditEvent:
     tool_id: str
     capability: str
     commit_sha: str
+    approval_request_id: str | None
     allowed: bool
     reason_codes: tuple[str, ...]
     event_hash: str
@@ -52,6 +53,7 @@ class AuditEvent:
                 "commit_sha": self.commit_sha,
                 "event_id": self.event_id,
                 "occurred_at": self.occurred_at.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+                "approval_request_id": self.approval_request_id,
                 "reason_codes": self.reason_codes,
                 "tenant": self.tenant,
                 "tool_id": self.tool_id,
@@ -72,14 +74,16 @@ class AdmissionDecision:
 def _event(
     *,
     now: datetime,
+    invocation_id: str,
     agent: AgentManifest,
     tool: ToolManifest,
     capability: str,
     commit_sha: str,
     allowed: bool,
     reasons: tuple[str, ...],
+    approval_request_id: str | None,
 ) -> AuditEvent:
-    event_id = str(uuid.uuid4())
+    event_id = invocation_id
     payload = {
         "agent_id": agent.agent_id,
         "allowed": allowed,
@@ -87,6 +91,7 @@ def _event(
         "commit_sha": commit_sha,
         "event_id": event_id,
         "occurred_at": now.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+        "approval_request_id": approval_request_id,
         "reason_codes": reasons,
         "tenant": agent.tenant,
         "tool_id": tool.tool_id,
@@ -102,6 +107,7 @@ def _event(
         tool.tool_id,
         capability,
         commit_sha,
+        approval_request_id,
         allowed,
         reasons,
         digest,
@@ -119,6 +125,7 @@ def admit_tool(
     capability: str,
     expected_commit_sha: str,
     now: datetime,
+    invocation_id: str,
     audit_sink: AuditSink,
     approval: ApprovalRequest | None = None,
 ) -> AdmissionDecision:
@@ -126,6 +133,12 @@ def admit_tool(
     reasons: set[str] = set()
     if now.tzinfo is None or now.utcoffset() != UTC.utcoffset(now):
         raise ValueError("now must be timezone-aware UTC")
+    try:
+        parsed_invocation_id = uuid.UUID(invocation_id)
+    except (AttributeError, ValueError) as error:
+        raise ValueError("invocation_id must be a canonical UUIDv4") from error
+    if str(parsed_invocation_id) != invocation_id or parsed_invocation_id.version != 4:
+        raise ValueError("invocation_id must be a canonical UUIDv4")
     if not _SHA_PATTERN.fullmatch(expected_commit_sha):
         reasons.add("expected_sha_invalid")
     if evidence.commit_sha != expected_commit_sha:
@@ -177,12 +190,20 @@ def admit_tool(
         reasons.add("policy_denies_capability")
     if capability not in lease.granted_capabilities:
         reasons.add("lease_capability_mismatch")
+    lease_scopes = set(lease.granted_capabilities)
+    if (
+        not lease_scopes <= set(agent.capabilities)
+        or not lease_scopes <= set(policy.allowed_capabilities)
+        or lease_scopes & set(policy.denied_capabilities)
+    ):
+        reasons.add("lease_scope_exceeds_authority")
     if not policy.deny_by_default:
         reasons.add("policy_not_deny_by_default")
     if not tool.enabled:
         reasons.add("tool_not_runtime_enabled")
     if tool.effect is not ToolEffect.READ_ONLY:
         reasons.add("mutating_tool_disabled_by_contract")
+    approval_request_id: str | None = None
     if capability in policy.human_approval_capabilities:
         if approval is None:
             reasons.add("human_approval_required")
@@ -197,17 +218,21 @@ def admit_tool(
             and approval.requested_at <= approval.decided_at <= now < approval.expires_at
         ):
             reasons.add("human_approval_invalid")
+        else:
+            approval_request_id = approval.request_id
 
     ordered_reasons = tuple(sorted(reasons))
     allowed = not ordered_reasons
     event = _event(
         now=now,
+        invocation_id=invocation_id,
         agent=agent,
         tool=tool,
         capability=capability,
         commit_sha=evidence.commit_sha,
         allowed=allowed,
         reasons=ordered_reasons,
+        approval_request_id=approval_request_id,
     )
     try:
         audit_sink.append(event)
@@ -215,12 +240,14 @@ def admit_tool(
         failure_reasons = tuple(sorted((*reasons, "audit_unavailable")))
         failure_event = _event(
             now=now,
+            invocation_id=invocation_id,
             agent=agent,
             tool=tool,
             capability=capability,
             commit_sha=evidence.commit_sha,
             allowed=False,
             reasons=failure_reasons,
+            approval_request_id=approval_request_id,
         )
         return AdmissionDecision(False, failure_reasons, failure_event, False)
     return AdmissionDecision(allowed, ordered_reasons, event, True)
