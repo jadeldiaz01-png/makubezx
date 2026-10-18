@@ -37,8 +37,9 @@ class MemoryAuditSink:
     def __init__(self) -> None:
         self.events: list[AuditEvent] = []
 
-    def append(self, event: AuditEvent) -> None:
+    def append(self, event: AuditEvent) -> bool:
         self.events.append(event)
+        return True
 
 
 def fixtures() -> tuple[
@@ -260,10 +261,20 @@ class RuntimeAdmissionTests(unittest.TestCase):
 
     def test_audit_failure_prevents_admission(self) -> None:
         class FailingSink:
-            def append(self, event: AuditEvent) -> None:
+            def append(self, event: AuditEvent) -> bool:
                 raise OSError("audit unavailable")
 
         result = self.admit(audit_sink=FailingSink())
+        self.assertFalse(result.allowed)
+        self.assertFalse(result.audit_persisted)
+        self.assertIn("audit_unavailable", result.reason_codes)
+
+    def test_audit_sink_must_confirm_persistence(self) -> None:
+        class NonPersistingSink:
+            def append(self, event: AuditEvent) -> bool:
+                return False
+
+        result = self.admit(audit_sink=NonPersistingSink())
         self.assertFalse(result.allowed)
         self.assertFalse(result.audit_persisted)
         self.assertIn("audit_unavailable", result.reason_codes)

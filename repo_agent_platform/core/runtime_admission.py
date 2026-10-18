@@ -25,9 +25,9 @@ _SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 class AuditSink(Protocol):
-    """Durably append idempotently; reject reuse of an event ID with different content."""
+    """Durably append idempotently and return True; reject conflicting event ID reuse."""
 
-    def append(self, event: AuditEvent) -> None: ...
+    def append(self, event: AuditEvent) -> bool: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,8 +235,10 @@ def admit_tool(
         approval_request_id=approval_request_id,
     )
     try:
-        audit_sink.append(event)
+        persisted = audit_sink.append(event)
     except Exception:
+        persisted = False
+    if persisted is not True:
         failure_reasons = tuple(sorted((*reasons, "audit_unavailable")))
         failure_event = _event(
             now=now,

@@ -15,7 +15,7 @@ Add `repo_agent_platform.core.runtime_admission.admit_tool` as a deterministic, 
 
 Lease limits cannot exceed the agent's execution budget, and every granted lease capability must be within both the agent scope and policy allowlist. In this increment, only enabled `READ_ONLY` tools can be admitted. `WRITE_SCOPED` and `DESTRUCTIVE` remain unavailable under the current tool contract even when an approval exists.
 
-Every outcome produces a redacted canonical decision event containing identifiers, capability, commit SHA, accepted approval reference when applicable, stable reason codes, timestamp, and a SHA-256 content hash. The caller supplies a canonical UUIDv4 invocation ID, making repeated evaluation of the same invocation reproducible. The caller must supply an audit sink with idempotent append semantics; reusing an event ID with different content must fail. The evaluator returns an allow only after the sink's `append` returns successfully; sink failure returns denial.
+Every outcome produces a redacted canonical decision event containing identifiers, capability, commit SHA, accepted approval reference when applicable, stable reason codes, timestamp, and a SHA-256 content hash. The caller supplies a canonical UUIDv4 invocation ID, making repeated evaluation of the same invocation reproducible. The caller must supply an audit sink with idempotent append semantics; reusing an event ID with different content must fail, and the sink must return `True` only after durable acceptance. The evaluator returns an allow only after that positive receipt; exceptions or any other return value yield denial.
 
 ## Consequences
 

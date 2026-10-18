@@ -28,6 +28,7 @@
 - Repeated evaluation with the same UUIDv4 invocation ID must emit identical audit data.
 - An admitted approval-gated decision must retain its exact approval request ID.
 - Audit sink failure must never return an allow decision.
+- A sink that does not positively confirm durable append must never return allow.
 
 ---
 
@@ -48,6 +49,7 @@
 - [x] Implement exact-match cross-contract validation and stable denial codes.
 - [x] Create redacted canonical audit events with SHA-256 content hashes.
 - [x] Require an audit sink before returning allow; fail closed when appending raises.
+- [x] Require the audit sink to return an explicit positive persistence receipt.
 - [x] Deny the entire lease if any granted capability exceeds agent or policy authority.
 - [x] Use a caller-supplied UUIDv4 invocation ID for repeatable audit event identity.
 - [x] Record the accepted approval request ID in the audit event.
