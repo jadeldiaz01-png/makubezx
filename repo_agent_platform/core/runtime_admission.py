@@ -264,4 +264,3 @@ def admit_tool(
         )
         return AdmissionDecision(False, failure_reasons, failure_event, False)
     return AdmissionDecision(allowed, ordered_reasons, event, True)
-
